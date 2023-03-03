@@ -1,0 +1,7 @@
+ManifestFileVersion: 0
+CRC: 4292605336
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: charmattacks
+      Dependencies: {}
