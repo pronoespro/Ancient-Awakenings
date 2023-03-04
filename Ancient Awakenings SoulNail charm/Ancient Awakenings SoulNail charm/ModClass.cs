@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Ancient_Awakenings_SoulNail_charm
 {
@@ -31,16 +32,19 @@ namespace Ancient_Awakenings_SoulNail_charm
 
             StartSoulNailCharm();
 
-            On.HeroController.Update += HeroController_Update;
+            LoadUI();
+
+            //On.HeroController.Update += HeroController_Update;
 
             Log("Initialized");
         }
 
         public void Unload()
         {
-            On.HeroController.Update -= HeroController_Update;
+            //On.HeroController.Update -= HeroController_Update;
             UnloadSoulNailCharm();
             UnloadBundles();
+            UnloadUI();
 
             Instance = null;
         }
@@ -51,10 +55,14 @@ namespace Ancient_Awakenings_SoulNail_charm
         public Dictionary<string, AssetBundle> AttackBundles;
         private List<string> attacksToLoad = new List<string> { "charmattacks" };
 
+        public Dictionary<string, AssetBundle> UIBundles;
+        private List<string> uiToLoad = new List<string> { "ui" };
+
         private void LoadBundles()
         {
 
             AttackBundles = new Dictionary<string, AssetBundle>();
+            UIBundles = new Dictionary<string, AssetBundle>();
 
 
             Assembly asm = Assembly.GetExecutingAssembly();
@@ -79,6 +87,10 @@ namespace Ancient_Awakenings_SoulNail_charm
                     {
                         Log("Found attack " + bundleName);
                         AttackBundles.Add(bundleName, AssetBundle.LoadFromMemory(buffer));
+                    }else if (uiToLoad.Contains(bundleName))
+                    {
+                        Log("Found attack " + bundleName);
+                        UIBundles.Add(bundleName, AssetBundle.LoadFromMemory(buffer));
                     }
                     else
                     {
@@ -93,6 +105,36 @@ namespace Ancient_Awakenings_SoulNail_charm
         private void UnloadBundles()
         {
             AttackBundles = null;
+            UIBundles = null;
+        }
+
+        #endregion
+
+        #region UI
+
+        public Canvas uiPanel;
+
+        private void LoadUI()
+        {
+            if (UIBundles.ContainsKey("ui"))
+            {
+                AssetBundle _bundle = UIBundles["ui"];
+                if(_bundle!=null)
+                {
+                    uiPanel = GameObject.Instantiate(_bundle.LoadAsset<GameObject>("Canvas")).GetComponent<Canvas>();
+                    Log("Loaded Canvas");
+
+                    uiPanel.gameObject.AddComponent<AncientUI>();
+
+                    GameObject.DontDestroyOnLoad(uiPanel);
+                }
+            }
+        }
+
+        private void UnloadUI(){
+            if (uiPanel != null){
+                GameObject.Destroy(uiPanel);
+            }
         }
 
         #endregion
@@ -101,28 +143,69 @@ namespace Ancient_Awakenings_SoulNail_charm
 
         //Soul Nail Charm
         private int soulNailHitCount;
+        private int maxSoulHitCount=5;
         private GameObject soulNailProjectile;
 
         public bool radianceDeffeated;
+        private HitDataList hitDatas;
+        private float refreshHitTimer = 0.5f;
+        private string[] invincibleEnemies = new string[] { "Zombie Beam Miner" };
         
+        public Vector2 GetSoulNailHit()
+        {
+            return new Vector2(soulNailHitCount, maxSoulHitCount);
+        }
+
         public void StartSoulNailCharm()
         {
             On.HealthManager.Hit += HealthManager_Hit;
+            On.HealthManager.Update += HealthManager_Update;
         }
 
         private void UnloadSoulNailCharm()
         {
             On.HealthManager.Hit -= HealthManager_Hit;
+            On.HealthManager.Update -= HealthManager_Update;
+        }
+
+        private void HealthManager_Update(On.HealthManager.orig_Update orig, HealthManager self)
+        {
+            if (hitDatas != null) {
+                hitDatas.Update();
+            }
+            orig(self);
+        }
+
+        private bool IsInvincibleEnemy(string name)
+        {
+
+            foreach(string s in invincibleEnemies)
+            {
+                if (name.Contains(s))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void HealthManager_Hit(On.HealthManager.orig_Hit orig, HealthManager self, HitInstance hitInstance)
         {
-            
-            if (PlayerData.instance.GetBool(nameof(PlayerData.instance.equippedCharm_15)) 
-                && hitInstance.AttackType == AttackTypes.Nail && !self.IsInvincible)
+            if (hitDatas == null){
+                hitDatas = new HitDataList();
+            }
+
+            if (self!=HeroController.instance &&
+                PlayerData.instance.GetBool(nameof(PlayerData.instance.equippedCharm_15)) 
+                && hitInstance.AttackType == AttackTypes.Nail && !hitDatas.Contains(hitInstance.Source.transform,self.transform)
+                && (!self.IsInvincible || IsInvincibleEnemy(self.gameObject.name)))
             {
+
+                hitDatas.Add(new HitData(hitInstance.Source.transform, self.transform,refreshHitTimer));
+
                 soulNailHitCount++;
-                if (soulNailHitCount % 5 == 4)
+                if (soulNailHitCount % maxSoulHitCount == maxSoulHitCount-1)
                 {
                     CreateSoulNailProj(self.gameObject.transform.position);
                 }
@@ -146,6 +229,8 @@ namespace Ancient_Awakenings_SoulNail_charm
 
                         ProjCollision col = child.gameObject.AddComponent<ProjCollision>();
                         col.proj = nailProj;
+
+                        col.gameObject.AddComponent<NonBouncer>();
 
                         DamageEnemies dmg = child.gameObject.AddComponent<DamageEnemies>();
 
@@ -175,7 +260,7 @@ namespace Ancient_Awakenings_SoulNail_charm
         #endregion
 
         #region Uninfected Crossroads
-
+        /*
         private void HeroController_Update(On.HeroController.orig_Update orig, HeroController self)
         {
             radianceDeffeated = PlayerData.instance.GetBool(nameof(PlayerData.instance.killedFinalBoss));
@@ -187,7 +272,7 @@ namespace Ancient_Awakenings_SoulNail_charm
             }
 
             orig(self);
-        }
+        }*/
         #endregion
     }
 }

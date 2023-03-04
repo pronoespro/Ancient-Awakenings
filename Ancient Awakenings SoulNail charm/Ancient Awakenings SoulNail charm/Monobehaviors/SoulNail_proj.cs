@@ -22,18 +22,26 @@ namespace Ancient_Awakenings_SoulNail_charm.Monobehaviors
 
         public void Restart()
         {
-            disableTimer = 0;
-            anim.SetBool("transformed", false);
-            anim.SetFloat("sibilingType", UnityEngine.Random.Range(0, 3));
-            transformTimer = 0;
-            targeted = false;
+            if (transformTimer >= timeToTransform)
+            {
+                disableTimer = 0;
+                anim.SetBool("transformed", false);
+                anim.SetFloat("sibilingType", UnityEngine.Random.Range(0, 3));
+                transformTimer = 0;
+                targeted = false;
 
-            transform.rotation = Quaternion.identity;
+                transform.up = Vector3.up;
+            }
         }
 
         public void Collide()
         {
-            disableTimer = 3f-Time.deltaTime-0.001f;
+            if (disableTimer < 3f - Time.deltaTime)
+            {
+                transformTimer = -0.05f;
+                disableTimer = 3f - Time.deltaTime - 0.001f;
+            }
+
         }
 
         private void Start()
@@ -50,6 +58,9 @@ namespace Ancient_Awakenings_SoulNail_charm.Monobehaviors
         {
             foreach(HealthManager health in FindObjectsOfType<HealthManager>())
             {
+                if (health.isDead){
+                    continue;
+                }
                 if (target==null || (
                     Vector3.Magnitude(health.transform.position-transform.position)<Vector3.Magnitude(target.transform.position-transform.position)+2f
                     &&
@@ -57,6 +68,11 @@ namespace Ancient_Awakenings_SoulNail_charm.Monobehaviors
                     Vector3.Dot(Vector3.Normalize(target.transform.position-transform.position),transform.up))) { 
 
                     target = health;
+                }
+                if (health.hasSpecialDeath)
+                {
+                    target = health;
+                    break;
                 }
             }
         }
@@ -66,36 +82,43 @@ namespace Ancient_Awakenings_SoulNail_charm.Monobehaviors
 
             if (target == null)
             {
+                anim.SetBool("transformed", false);
+                transform.up = Vector3.up;
                 GetTarget();
             }
 
             transformTimer += Time.deltaTime;
 
-            if (transformTimer > timeToTransform){
-                if (!targeted)
-                {
-                    transform.up =  Vector3.Normalize(target.transform.position - transform.position);
-                    targeted = true;
-                }
+            if (transformTimer > timeToTransform || transformTimer<0){
 
                 anim.SetBool("transformed", true);
                 transform.position += transform.up * Time.deltaTime*projSpeed;
 
                 if (target != null)
                 {
+                    if (!targeted)
+                    {
+                        transform.up = Vector3.Normalize(target.transform.position - transform.position);
+                        targeted = true;
+                    }
+
                     transform.up = Vector3.Lerp(transform.up, Vector3.Normalize(target.transform.position - transform.position), Time.deltaTime * 10);
+                }
+                disableTimer += Time.deltaTime;
+                if (disableTimer >= 3f) 
+                {
+                    gameObject.SetActive(false);
+                    transformTimer = timeToTransform;
+                }
+                if (target == null)
+                {
+                    disableTimer = 3 - Time.deltaTime;
                 }
             }
             else
             {
                 anim.SetBool("transformed", false);
                 transform.up=Vector3.up;
-            }
-
-            disableTimer += Time.deltaTime;
-            if (disableTimer >= 3f)
-            {
-                gameObject.SetActive(false);
             }
         }
 

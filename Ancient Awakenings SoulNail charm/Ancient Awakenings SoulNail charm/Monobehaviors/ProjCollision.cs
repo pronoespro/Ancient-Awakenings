@@ -14,7 +14,7 @@ namespace Ancient_Awakenings_SoulNail_charm.Monobehaviors
 
         public void OnTriggerStay2D(Collider2D collider)
         {
-            if (collider.gameObject.layer == 11)
+            if (collider.gameObject.layer > 10)
             {
                 proj.Collide();
             }
@@ -22,7 +22,7 @@ namespace Ancient_Awakenings_SoulNail_charm.Monobehaviors
 
         public void OnTriggerEnter2D(Collider2D collider)
         {
-            if (collider.gameObject.layer == 11)
+            if (collider.gameObject.layer >10)
             {
                 proj.Collide();
             }

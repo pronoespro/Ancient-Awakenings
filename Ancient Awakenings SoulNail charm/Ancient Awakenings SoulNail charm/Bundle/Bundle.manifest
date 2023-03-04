@@ -1,7 +1,10 @@
 ManifestFileVersion: 0
-CRC: 4292605336
+CRC: 247704187
 AssetBundleManifest:
   AssetBundleInfos:
     Info_0:
       Name: charmattacks
+      Dependencies: {}
+    Info_1:
+      Name: ui
       Dependencies: {}
